@@ -376,5 +376,27 @@
         """
       }
     }
+
+    func testReducerConflictDiagnostic() {
+      assertMacro {
+        """
+        @Reducer
+        struct Feature {
+          @FeatureAction
+          enum Action {}
+        }
+        """
+      } diagnostics: {
+        """
+        @Reducer
+        struct Feature {
+          @FeatureAction
+          enum Action {}
+               ┬─────
+               ╰─ 🛑 '@FeatureAction' conflicts with '@Reducer' auto-generated case paths; use '@FeatureReducer' on the enclosing type instead
+        }
+        """
+      }
+    }
   }
 #endif

@@ -3,10 +3,6 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-#if !canImport(SwiftSyntax600)
-import SwiftSyntaxMacroExpansion
-#endif
-
 public struct FeatureActionMacro {}
 
 private enum FeatureActionRole: String, CaseIterable {
@@ -43,11 +39,16 @@ extension FeatureActionMacro: MemberMacro {
     of _: AttributeSyntax,
     providingMembersOf declaration: some DeclGroupSyntax,
     conformingTo _: [TypeSyntax],
-    in _: some MacroExpansionContext
+    in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
     guard let enumDecl = declaration.as(EnumDeclSyntax.self) else {
       throw DiagnosticsError(
         diagnostics: [FeatureActionMacroDiagnostic.notEnum.diagnose(at: declaration)]
+      )
+    }
+    if enumDecl.name.text == "Action", hasEnclosingReducerDeclaration(for: enumDecl, in: context) {
+      throw DiagnosticsError(
+        diagnostics: [FeatureActionMacroDiagnostic.reducerConflict.diagnose(at: enumDecl.name)]
       )
     }
     
@@ -183,10 +184,49 @@ extension FeatureActionMacro: ExtensionMacro {
   }
 }
 
+private func hasEnclosingReducerDeclaration(
+  for declaration: some DeclGroupSyntax,
+  in context: some MacroExpansionContext
+) -> Bool {
+  for lexical in context.lexicalContext {
+    if let enclosingDecl = lexical.as(StructDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    if let enclosingDecl = lexical.as(ClassDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    if let enclosingDecl = lexical.as(ActorDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    if let enclosingDecl = lexical.as(EnumDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+  }
+
+  var current = declaration.parent
+  while let node = current {
+    if let enclosingDecl = node.as(StructDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    if let enclosingDecl = node.as(ClassDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    if let enclosingDecl = node.as(ActorDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    if let enclosingDecl = node.as(EnumDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    current = node.parent
+  }
+  return false
+}
+
 private enum FeatureActionMacroDiagnostic {
   case notEnum
   case customCaseNotAllowed(String)
   case duplicateConformance(String)
+  case reducerConflict
   
   func diagnose(at node: some SyntaxProtocol) -> Diagnostic {
     Diagnostic(node: Syntax(node), message: self)
@@ -202,6 +242,8 @@ extension FeatureActionMacroDiagnostic: DiagnosticMessage {
       return "'@FeatureAction' does not allow custom enum cases ('\(caseName)'); add behavior in nested action enums instead"
     case let .duplicateConformance(conformance):
       return "'@FeatureAction' already adds '\(conformance)' conformance; remove it from the enum inheritance list"
+    case .reducerConflict:
+      return "'@FeatureAction' conflicts with '@Reducer' auto-generated case paths; use '@FeatureReducer' on the enclosing type instead"
     }
   }
   
@@ -213,6 +255,8 @@ extension FeatureActionMacroDiagnostic: DiagnosticMessage {
       return MessageID(domain: "FeatureActionMacro", id: "customCaseNotAllowed")
     case .duplicateConformance:
       return MessageID(domain: "FeatureActionMacro", id: "duplicateConformance")
+    case .reducerConflict:
+      return MessageID(domain: "FeatureActionMacro", id: "reducerConflict")
     }
   }
   
@@ -249,6 +293,19 @@ private extension EnumDeclSyntax {
       }
     }
     return false
+  }
+}
+
+private extension DeclGroupSyntax {
+  func hasAttribute(named name: String) -> Bool {
+    self.attributes.contains { element in
+      guard
+        let attribute = element.as(AttributeSyntax.self),
+        let attributeName = attribute.attributeName.as(IdentifierTypeSyntax.self)?.name.text
+          ?? attribute.attributeName.as(MemberTypeSyntax.self)?.name.text
+      else { return false }
+      return attributeName == name
+    }
   }
 }
 

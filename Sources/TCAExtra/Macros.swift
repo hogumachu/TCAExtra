@@ -23,3 +23,10 @@ public macro FeatureAction() = #externalMacro(
   module: "TCAExtraMacros",
   type: "FeatureActionMacro"
 )
+
+@attached(memberAttribute)
+@attached(extension, conformances: Reducer)
+public macro FeatureReducer() = #externalMacro(
+  module: "TCAExtraMacros",
+  type: "FeatureReducerMacro"
+)

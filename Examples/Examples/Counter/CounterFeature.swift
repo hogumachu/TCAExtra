@@ -1,12 +1,11 @@
 import TCAExtra
 
-struct CounterFeature: Reducer {
-  @ObservableState
+@FeatureReducer
+struct CounterFeature {
   struct State: Equatable {
     var count = 0
   }
 
-  @FeatureAction
   enum Action {
     enum View {
       case incrementTapped

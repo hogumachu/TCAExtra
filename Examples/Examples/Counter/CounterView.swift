@@ -1,6 +1,7 @@
 import SwiftUI
 import TCAExtra
 
+@ViewAction(for: CounterFeature.self)
 struct CounterView: View {
   let store: StoreOf<CounterFeature>
   
@@ -13,12 +14,12 @@ struct CounterView: View {
         
         HStack {
           Button("-") {
-            store.send(.view(.decrementTapped))
+            send(.decrementTapped)
           }
           .buttonStyle(.borderedProminent)
           
           Button("+") {
-            store.send(.view(.incrementTapped))
+            send(.incrementTapped)
           }
           .buttonStyle(.borderedProminent)
         }

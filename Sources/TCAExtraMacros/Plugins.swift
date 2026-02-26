@@ -5,5 +5,6 @@ import SwiftSyntaxMacros
 struct MacroPlugin: CompilerPlugin {
   let providingMacros: [any Macro.Type] = [
     FeatureActionMacro.self,
+    FeatureReducerMacro.self,
   ]
 }
