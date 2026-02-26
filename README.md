@@ -16,8 +16,6 @@ This structure improves readability, but writing it repeatedly across features i
 
 ## Why `@FeatureReducer` is useful immediately
 
-Yes, GitHub supports added/removed style blocks with `+`/`-` via fenced `diff` code blocks.
-
 ```diff
 + @FeatureReducer
   struct Feature {
