@@ -19,6 +19,7 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.24.1"),
+    .package(url: "https://github.com/pointfreeco/swift-macro-testing", from: "0.6.3"),
     .package(url: "https://github.com/swiftlang/swift-syntax", from: "602.0.0"),
   ],
   targets: [
@@ -32,7 +33,18 @@ let package = Package(
     .macro(
       name: "TCAExtraMacros",
       dependencies: [
+        .product(name: "SwiftDiagnostics", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+      ]
+    ),
+    .testTarget(
+      name: "TCAExtraMacrosTests",
+      dependencies: [
+        "TCAExtraMacros",
+        .product(name: "MacroTesting", package: "swift-macro-testing"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ]
     )
