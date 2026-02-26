@@ -12,6 +12,7 @@ import Foundation
   named(AllCasePaths),
   named(allCasePaths),
   named(child),
+  named(binding),
   named(delegate),
   named(external),
   named(local),

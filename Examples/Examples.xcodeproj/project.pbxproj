@@ -19,6 +19,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				ExamplesApp.swift,
+				RootFeature.swift,
 			);
 			target = E1A1A1A12026A00100000001 /* Examples */;
 		};
@@ -27,6 +28,10 @@
 			membershipExceptions = (
 				Counter/CounterFeature.swift,
 				Counter/CounterView.swift,
+				Nested/ChildFeature.swift,
+				Nested/ChildView.swift,
+				Nested/ParentFeature.swift,
+				Nested/ParentView.swift,
 			);
 			target = E1A1A1A12026A00100000001 /* Examples */;
 		};

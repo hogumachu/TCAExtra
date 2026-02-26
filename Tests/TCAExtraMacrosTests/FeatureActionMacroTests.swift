@@ -90,6 +90,7 @@
                 }
               }
 
+
               public func makeIterator() -> Swift.IndexingIterator<[CasePaths.PartialCaseKeyPath<Action>]> {
                 [
                   \Action.Cases.child,
@@ -156,7 +157,7 @@
             public var child: CasePaths.AnyCasePath<Action, Child> {
               ._$embed(Action.child) {
                 guard case let .child(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -164,7 +165,7 @@
             public var delegate: CasePaths.AnyCasePath<Action, Delegate> {
               ._$embed(Action.delegate) {
                 guard case let .delegate(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -172,7 +173,7 @@
             public var external: CasePaths.AnyCasePath<Action, External> {
               ._$embed(Action.external) {
                 guard case let .external(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -180,7 +181,7 @@
             public var local: CasePaths.AnyCasePath<Action, Local> {
               ._$embed(Action.local) {
                 guard case let .local(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -188,11 +189,12 @@
             public var view: CasePaths.AnyCasePath<Action, View> {
               ._$embed(Action.view) {
                 guard case let .view(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
             }
+
 
             public func makeIterator() -> Swift.IndexingIterator<[CasePaths.PartialCaseKeyPath<Action>]> {
               [
@@ -266,7 +268,7 @@
             public var child: CasePaths.AnyCasePath<Action, Child> {
               ._$embed(Action.child) {
                 guard case let .child(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -274,7 +276,7 @@
             public var delegate: CasePaths.AnyCasePath<Action, Delegate> {
               ._$embed(Action.delegate) {
                 guard case let .delegate(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -282,7 +284,7 @@
             public var external: CasePaths.AnyCasePath<Action, External> {
               ._$embed(Action.external) {
                 guard case let .external(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -290,7 +292,7 @@
             public var local: CasePaths.AnyCasePath<Action, Local> {
               ._$embed(Action.local) {
                 guard case let .local(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
@@ -298,11 +300,12 @@
             public var view: CasePaths.AnyCasePath<Action, View> {
               ._$embed(Action.view) {
                 guard case let .view(value) = $0 else {
-                  return nil
+                    return nil
                 }
                 return value
               }
             }
+
 
             public func makeIterator() -> Swift.IndexingIterator<[CasePaths.PartialCaseKeyPath<Action>]> {
               [
@@ -377,6 +380,225 @@
       }
     }
 
+    func testBindableSynthesisInFeatureReducerContext() {
+      assertMacro {
+        """
+        @FeatureReducer
+        struct Feature {
+          struct State {}
+
+          @FeatureAction
+          enum Action: BindableAction {}
+        }
+        """
+      } expansion: {
+        #"""
+        @FeatureReducer
+        struct Feature {
+          struct State {}
+          enum Action: BindableAction {
+
+            case child(Child)
+
+            case delegate(Delegate)
+
+            case external(External)
+
+            case local(Local)
+
+            case view(View)
+
+            case binding(ComposableArchitecture.BindingAction<State>)
+
+            enum Child {
+            }
+
+            enum Delegate {
+            }
+
+            enum External {
+            }
+
+            enum Local {
+            }
+
+            enum View {
+            }
+
+            struct AllCasePaths: Swift.Sequence {
+              var child: CasePaths.AnyCasePath<Action, Child> {
+                ._$embed(Action.child) {
+                  guard case let .child(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var delegate: CasePaths.AnyCasePath<Action, Delegate> {
+                ._$embed(Action.delegate) {
+                  guard case let .delegate(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var external: CasePaths.AnyCasePath<Action, External> {
+                ._$embed(Action.external) {
+                  guard case let .external(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var local: CasePaths.AnyCasePath<Action, Local> {
+                ._$embed(Action.local) {
+                  guard case let .local(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var view: CasePaths.AnyCasePath<Action, View> {
+                ._$embed(Action.view) {
+                  guard case let .view(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+                var binding: CasePaths.AnyCasePath<Action, ComposableArchitecture.BindingAction<State>> {
+                ._$embed(Action.binding) {
+                  guard case let .binding(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+
+              func makeIterator() -> Swift.IndexingIterator<[CasePaths.PartialCaseKeyPath<Action>]> {
+                [
+                  \Action.Cases.child,
+                  \Action.Cases.binding,
+                  \Action.Cases.delegate,
+                  \Action.Cases.external,
+                  \Action.Cases.local,
+                  \Action.Cases.view,
+                ].makeIterator()
+              }
+            }
+
+            static var allCasePaths: AllCasePaths {
+              AllCasePaths()
+            }
+        }
+        }
+
+        extension Feature.Action: ComposableArchitecture.ViewAction, CasePaths.CasePathable, CasePaths.CasePathIterable {
+        }
+        """#
+      }
+    }
+
+    func testBindableNotSynthesizedOutsideFeatureReducer() {
+      assertMacro {
+        """
+        @FeatureAction
+        enum Action: BindableAction {}
+        """
+      } expansion: {
+        #"""
+        enum Action: BindableAction {
+
+            case child(Child)
+
+            case delegate(Delegate)
+
+            case external(External)
+
+            case local(Local)
+
+            case view(View)
+
+            enum Child {
+            }
+
+            enum Delegate {
+            }
+
+            enum External {
+            }
+
+            enum Local {
+            }
+
+            enum View {
+            }
+
+            struct AllCasePaths: Swift.Sequence {
+              var child: CasePaths.AnyCasePath<Action, Child> {
+                ._$embed(Action.child) {
+                  guard case let .child(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var delegate: CasePaths.AnyCasePath<Action, Delegate> {
+                ._$embed(Action.delegate) {
+                  guard case let .delegate(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var external: CasePaths.AnyCasePath<Action, External> {
+                ._$embed(Action.external) {
+                  guard case let .external(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var local: CasePaths.AnyCasePath<Action, Local> {
+                ._$embed(Action.local) {
+                  guard case let .local(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+              var view: CasePaths.AnyCasePath<Action, View> {
+                ._$embed(Action.view) {
+                  guard case let .view(value) = $0 else {
+                      return nil
+                  }
+                  return value
+                }
+              }
+
+
+              func makeIterator() -> Swift.IndexingIterator<[CasePaths.PartialCaseKeyPath<Action>]> {
+                [
+                  \Action.Cases.child,
+                  \Action.Cases.delegate,
+                  \Action.Cases.external,
+                  \Action.Cases.local,
+                  \Action.Cases.view,
+                ].makeIterator()
+              }
+            }
+
+            static var allCasePaths: AllCasePaths {
+                AllCasePaths()
+            }
+        }
+
+        extension Action: ComposableArchitecture.ViewAction, CasePaths.CasePathable, CasePaths.CasePathIterable {
+        }
+        """#
+      }
+    }
+
     func testReducerConflictDiagnostic() {
       assertMacro {
         """
@@ -398,5 +620,6 @@
         """
       }
     }
+
   }
 #endif

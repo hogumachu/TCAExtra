@@ -8,6 +8,8 @@ struct CounterView: View {
   var body: some View {
     WithPerceptionTracking {
       VStack {
+        Spacer()
+        
         Text("\(store.count)")
           .font(.title)
           .monospacedDigit()
@@ -23,6 +25,8 @@ struct CounterView: View {
           }
           .buttonStyle(.borderedProminent)
         }
+        
+        Spacer()
       }
     }
   }

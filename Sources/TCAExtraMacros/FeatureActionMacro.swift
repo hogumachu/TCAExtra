@@ -21,6 +21,10 @@ private enum FeatureActionRole: String, CaseIterable {
     case .view: return "view"
     }
   }
+
+  static var baseRoles: [FeatureActionRole] {
+    [.child, .delegate, .external, .local, .view]
+  }
 }
 
 extension FeatureActionMacro: MemberMacro {
@@ -46,6 +50,11 @@ extension FeatureActionMacro: MemberMacro {
         diagnostics: [FeatureActionMacroDiagnostic.notEnum.diagnose(at: declaration)]
       )
     }
+    let isActionEnum = enumDecl.name.text == "Action"
+    let shouldSynthesizeBindable =
+      isActionEnum
+      && hasEnclosingFeatureReducerDeclaration(for: enumDecl, in: context)
+      && enumDecl.inheritsType(named: "BindableAction")
     if enumDecl.name.text == "Action", hasEnclosingReducerDeclaration(for: enumDecl, in: context) {
       throw DiagnosticsError(
         diagnostics: [FeatureActionMacroDiagnostic.reducerConflict.diagnose(at: enumDecl.name)]
@@ -65,59 +74,90 @@ extension FeatureActionMacro: MemberMacro {
     let accessPrefix = enumDecl.modifiers.accessPrefix
     let enumName = enumDecl.name.trimmedDescription
     
-    var decls: [DeclSyntax] = FeatureActionRole.allCases.map { role in
+    let roles = FeatureActionRole.baseRoles
+    var decls: [DeclSyntax] = roles.map { role in
       "case \(raw: role.caseName)(\(raw: role.rawValue))"
     }
+    if shouldSynthesizeBindable {
+      decls.append(
+        "case binding(ComposableArchitecture.BindingAction<State>)"
+      )
+    }
     
-    for role in FeatureActionRole.allCases where !existingNestedEnums.contains(role.rawValue) {
+    for role in roles where !existingNestedEnums.contains(role.rawValue) {
       decls.append(
         """
         \(raw: accessPrefix)enum \(raw: role.rawValue) {}
         """
       )
     }
+
+    let bindingCasePath = shouldSynthesizeBindable
+      ? """
+        \(accessPrefix)var binding: CasePaths.AnyCasePath<\(enumName), ComposableArchitecture.BindingAction<State>> {
+          ._$embed(\(enumName).binding) {
+            guard case let .binding(value) = $0 else {
+                return nil
+            }
+            return value
+          }
+        }
+      """
+      : nil
+    let iteratorCaseNames =
+      ["child"] + (shouldSynthesizeBindable ? ["binding"] : []) + ["delegate", "external", "local", "view"]
+    let iteratorLines = iteratorCaseNames
+      .map { "      \\\(enumName).Cases.\($0)," }
+      .joined(separator: "\n")
     
     decls.append(
       """
       \(raw: accessPrefix)struct AllCasePaths: Swift.Sequence {
         \(raw: accessPrefix)var child: CasePaths.AnyCasePath<\(raw: enumName), Child> {
           ._$embed(\(raw: enumName).child) {
-            guard case let .child(value) = $0 else { return nil }
+            guard case let .child(value) = $0 else {
+                return nil
+            }
             return value
           }
         }
         \(raw: accessPrefix)var delegate: CasePaths.AnyCasePath<\(raw: enumName), Delegate> {
           ._$embed(\(raw: enumName).delegate) {
-            guard case let .delegate(value) = $0 else { return nil }
+            guard case let .delegate(value) = $0 else {
+                return nil
+            }
             return value
           }
         }
         \(raw: accessPrefix)var external: CasePaths.AnyCasePath<\(raw: enumName), External> {
           ._$embed(\(raw: enumName).external) {
-            guard case let .external(value) = $0 else { return nil }
+            guard case let .external(value) = $0 else {
+                return nil
+            }
             return value
           }
         }
         \(raw: accessPrefix)var local: CasePaths.AnyCasePath<\(raw: enumName), Local> {
           ._$embed(\(raw: enumName).local) {
-            guard case let .local(value) = $0 else { return nil }
+            guard case let .local(value) = $0 else {
+                return nil
+            }
             return value
           }
         }
         \(raw: accessPrefix)var view: CasePaths.AnyCasePath<\(raw: enumName), View> {
           ._$embed(\(raw: enumName).view) {
-            guard case let .view(value) = $0 else { return nil }
+            guard case let .view(value) = $0 else {
+                return nil
+            }
             return value
           }
         }
+        \(raw: bindingCasePath ?? "")
       
         \(raw: accessPrefix)func makeIterator() -> Swift.IndexingIterator<[CasePaths.PartialCaseKeyPath<\(raw: enumName)>]> {
           [
-            \\\(raw: enumName).Cases.child,
-            \\\(raw: enumName).Cases.delegate,
-            \\\(raw: enumName).Cases.external,
-            \\\(raw: enumName).Cases.local,
-            \\\(raw: enumName).Cases.view,
+      \(raw: iteratorLines)
           ].makeIterator()
         }
       }
@@ -129,7 +169,6 @@ extension FeatureActionMacro: MemberMacro {
       \(raw: accessPrefix)static var allCasePaths: AllCasePaths { AllCasePaths() }
       """
     )
-    
     return decls
   }
 }
@@ -137,12 +176,14 @@ extension FeatureActionMacro: MemberMacro {
 extension FeatureActionMacro: MemberAttributeMacro {
   public static func expansion<D: DeclGroupSyntax, M: DeclSyntaxProtocol, C: MacroExpansionContext>(
     of _: AttributeSyntax,
-    attachedTo _: D,
+    attachedTo declaration: D,
     providingAttributesFor member: M,
     in _: C
   ) throws -> [AttributeSyntax] {
     guard let nestedEnum = member.as(EnumDeclSyntax.self) else { return [] }
-    guard FeatureActionRole.allCases.map(\.rawValue).contains(nestedEnum.name.text) else { return [] }
+    let roleNames = Set(FeatureActionRole.baseRoles.map(\.rawValue))
+    guard roleNames.contains(nestedEnum.name.text) else { return [] }
+
     guard !nestedEnum.hasCasePathableAttribute else { return [] }
     return ["@CasePathable"]
   }
@@ -154,12 +195,11 @@ extension FeatureActionMacro: ExtensionMacro {
     attachedTo declaration: D,
     providingExtensionsOf type: T,
     conformingTo _: [TypeSyntax],
-    in _: C
+    in context: C
   ) throws -> [ExtensionDeclSyntax] {
     guard let enumDecl = declaration.as(EnumDeclSyntax.self) else {
       return []
     }
-    
     let inheritedTypeNames = Set(
       (enumDecl.inheritanceClause?.inheritedTypes ?? []).map {
         $0.type.trimmedDescription.split(separator: ".").last.map(String.init) ?? $0.type.trimmedDescription
@@ -172,7 +212,6 @@ extension FeatureActionMacro: ExtensionMacro {
         diagnostics: [FeatureActionMacroDiagnostic.duplicateConformance(duplicate).diagnose(at: enumDecl.name)]
       )
     }
-    
     return [
       DeclSyntax(
         """
@@ -215,6 +254,44 @@ private func hasEnclosingReducerDeclaration(
       return true
     }
     if let enclosingDecl = node.as(EnumDeclSyntax.self), enclosingDecl.hasAttribute(named: "Reducer") {
+      return true
+    }
+    current = node.parent
+  }
+  return false
+}
+
+private func hasEnclosingFeatureReducerDeclaration(
+  for declaration: some DeclGroupSyntax,
+  in context: some MacroExpansionContext
+) -> Bool {
+  for lexical in context.lexicalContext {
+    if let enclosingDecl = lexical.as(StructDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+    if let enclosingDecl = lexical.as(ClassDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+    if let enclosingDecl = lexical.as(ActorDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+    if let enclosingDecl = lexical.as(EnumDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+  }
+
+  var current = declaration.parent
+  while let node = current {
+    if let enclosingDecl = node.as(StructDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+    if let enclosingDecl = node.as(ClassDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+    if let enclosingDecl = node.as(ActorDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
+      return true
+    }
+    if let enclosingDecl = node.as(EnumDeclSyntax.self), enclosingDecl.hasAttribute(named: "FeatureReducer") {
       return true
     }
     current = node.parent
@@ -293,6 +370,15 @@ private extension EnumDeclSyntax {
       }
     }
     return false
+  }
+
+  func inheritsType(named name: String) -> Bool {
+    guard let inheritanceClause = inheritanceClause else { return false }
+    return inheritanceClause.inheritedTypes.contains { inherited in
+      let trimmed = inherited.type.trimmedDescription
+      let simple = trimmed.split(separator: ".").last.map(String.init) ?? trimmed
+      return simple == name
+    }
   }
 }
 

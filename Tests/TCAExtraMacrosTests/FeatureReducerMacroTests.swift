@@ -111,6 +111,30 @@
       }
     }
 
+    func testAddsFeatureActionToBindableActionEnum() {
+      assertMacro {
+        """
+        @FeatureReducer
+        struct Feature {
+          struct State {}
+          enum Action: BindableAction {}
+        }
+        """
+      } expansion: {
+        """
+        struct Feature {
+          @ObservableState
+          struct State {}
+          @FeatureAction
+          enum Action: BindableAction {}
+        }
+
+        extension Feature: ComposableArchitecture.Reducer {
+        }
+        """
+      }
+    }
+
     func testRequiresStruct() {
       assertMacro {
         """

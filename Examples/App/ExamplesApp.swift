@@ -5,9 +5,9 @@ import TCAExtra
 struct ExamplesApp: App {
   var body: some Scene {
     WindowGroup {
-      CounterView(
-        store: .init(initialState: CounterFeature.State()) {
-          CounterFeature()
+      RootView(
+        store: .init(initialState: RootFeature.State()) {
+          RootFeature()
         }
       )
     }
